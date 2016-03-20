@@ -10,13 +10,95 @@
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <cassert>
 
 #include "CNN.hh"
 #include "imgproc.hh"
 
 
+// Get a matrix element, subject to boundary conditions
+static double get_matrix_element(
+	const double *RESTRICT mat,
+	std::ptrdiff_t r,
+	std::ptrdiff_t c,
+	std::ptrdiff_t width,
+	std::ptrdiff_t height,
+	Template tem
+)
+{
+	// regular case, inner cells
+	if (0 <= r && r < height && 0 <= c && c < width) {
+		return mat[to_index(r, c, width)];
+	}
+
+	// boundary: r < 0 || r >= height || c < 0 || c >= width
+	switch (tem.boundary_condition) {
+		case Constant:
+			return tem.virtual_cell;
+
+		case ZeroFlux:
+			if (r < 0) {
+				r = 0;
+			} else if (r >= height) {
+				r = height - 1;
+			}
+
+			if (c < 0) {
+				c = 0;
+			} else if (c >= width) {
+				c = width - 1;
+			}
+
+			return mat[to_index(r, c, width)];
+
+		case Periodic:
+			if (r < 0) {
+				r += height;
+			} else if (r >= height) {
+				r -= height;
+			}
+
+			if (c < 0) {
+				c += width;
+			} else if (c >= width) {
+				c -= width;
+			}
+
+			return mat[to_index(r, c, width)];
+
+	default:
+		assert(0 && "unreachable: invalid boundary condition");
+		return 0;
+	}
+}
+
+// Compute 3x3 neighborhood of the cell at (r, c)
+template<typename Fn>
+static double compute_neighborhood(
+	std::ptrdiff_t r,
+	std::ptrdiff_t c,
+	std::ptrdiff_t width,
+	std::ptrdiff_t height,
+	CouplingMat M,
+	Fn func
+)
+{
+	double result = 0.0;
+
+	for (std::ptrdiff_t off_r = -1; off_r <= +1; off_r++) {
+		for (std::ptrdiff_t off_c = -1; off_c <= +1; off_c++) {
+			auto r_p = r + off_r;
+			auto c_p = c + off_c;
+
+			result += func(r_p, c_p) * M[off_r + 1][off_c + 1];
+		}
+	}
+
+	return result;
+}
+
 // The actual CNN dynamic equation
-static int dynamic_eq(double t, const double *__restrict__ x, double *__restrict__ dxdt, void *param)
+static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param)
 {
 	auto *cnn = static_cast<CNN *>(param);
 
@@ -29,24 +111,31 @@ static int dynamic_eq(double t, const double *__restrict__ x, double *__restrict
 		for (std::ptrdiff_t c = 0; c < width; c++) {
 			std::ptrdiff_t i = to_index(r, c, width);
 
-			// boundary
-			if (r == 0 || c == 0 || r == height - 1 || c == width - 1) {
-				// TODO: add Neumann and periodic boundary conditions
-				dxdt[i] = 0;
-				continue;
-			}
-
 			double diff = FF[i] - x[i];
 
-			// Compute 3x3 neighborhood
-			for (std::ptrdiff_t off_r = -1; off_r <= +1; off_r++) {
-				for (std::ptrdiff_t off_c = -1; off_c <= +1; off_c++) {
-					std::ptrdiff_t r_p = r + off_r;
-					std::ptrdiff_t c_p = c + off_c;
-					std::ptrdiff_t j = to_index(r_p, c_p, width);
-
-					diff += tem.A[off_r + 1][off_c + 1] * y(x[j]);
-				}
+			if (r <= 0 || c <= 0 || r >= height - 1 || c >= width - 1) {
+				// Boundary Condition
+				// This is separated from the regular case because it contains quite a few
+				// conditionals - and I don't want those to be right in the middle of the
+				// tight nested inner loops of neighborhood calculation.
+				// Note: I've measured this, and leaving off this condition makes simulation
+				// about 2 times slower, meaning that the compiler is not unswitching the loop.
+				diff += compute_neighborhood(
+					r, c, width, height, tem.A,
+					[=](auto r_p, auto c_p) {
+						double xij = get_matrix_element(x, r_p, c_p, width, height, tem);
+						return y(xij);
+					}
+				);
+			} else {
+				// Inner cells - just compute regularly
+				diff += compute_neighborhood(
+					r, c, width, height, tem.A,
+					[=](auto r_p, auto c_p) {
+						auto j = to_index(r_p, c_p, width);
+						return y(x[j]);
+					}
+				);
 			}
 
 			dxdt[i] = diff;
@@ -63,7 +152,9 @@ CNN::CNN(
 	std::vector<double> px,
 	std::vector<double> u,
 	Template ptem,
-	double pt_max
+	double pt_max,
+	double rel_tol,
+	double abs_tol
 ):
 	width(w),
 	height(h),
@@ -71,7 +162,7 @@ CNN::CNN(
 	x(std::move(px)),
 	FF(dimension),
 	tem(ptem),
-	h(1.0e-6),
+	h(rel_tol * abs_tol),
 	t_max(pt_max),
 	ode { 0 },
 	stepper(nullptr),
@@ -79,24 +170,18 @@ CNN::CNN(
 	evolver(nullptr)
 {
 	// Precompute Feed-Forward Image
-	// TODO: add non-constant boundary conditions (Zero-Flux, Toroidal)
-	for (std::ptrdiff_t r = 1; r < height - 1; r++) {
-		for (std::ptrdiff_t c = 1; c < width - 1; c++) {
-			std::ptrdiff_t i = to_index(r, c, width);
+	for (std::ptrdiff_t r = 0; r < height; r++) {
+		for (std::ptrdiff_t c = 0; c < width; c++) {
 
-			double ci = tem.Z;
-
-			for (std::ptrdiff_t off_r = -1; off_r <= +1; off_r++) {
-				for (std::ptrdiff_t off_c = -1; off_c <= +1; off_c++) {
-					std::ptrdiff_t r_p = r + off_r;
-					std::ptrdiff_t c_p = c + off_c;
-					std::ptrdiff_t j = to_index(r_p, c_p, width);
-
-					ci += tem.B[off_r + 1][off_c + 1] * u[j];
+			double cell = compute_neighborhood(
+				r, c, width, height, tem.B,
+				[=, &u](auto r_p, auto c_p) {
+					return get_matrix_element(&u[0], r_p, c_p, width, height, tem);
 				}
-			}
+			);
 
-			FF[i] = ci;
+			auto i = to_index(r, c, width);
+			FF[i] = cell + tem.Z;
 		}
 	}
 
@@ -108,7 +193,7 @@ CNN::CNN(
 
 	// Runge-Kutta-Fehlberg method of order 4-5
 	stepper = gsl_odeiv2_step_alloc(gsl_odeiv2_step_rkf45, dimension);
-	control = gsl_odeiv2_control_standard_new(1.0e-3, 1.0e-3, 1, 1);
+	control = gsl_odeiv2_control_standard_new(abs_tol, rel_tol, 1, 1);
 	evolver = gsl_odeiv2_evolve_alloc(dimension);
 }
 

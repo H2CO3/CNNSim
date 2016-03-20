@@ -20,10 +20,11 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_odeiv2.h>
 
+#include "util.hh"
 #include "template.hh"
 
 
-static int dynamic_eq(double t, const double *__restrict__ x, double *__restrict__ dxdt, void *param);
+static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
 
 struct CNN {
 private:
@@ -51,7 +52,9 @@ public:
 		std::vector<double> px,
 		std::vector<double> u,
 		Template ptem,
-		double pt_max
+		double pt_max,
+		double rel_tol = 1.0e-3,
+		double abs_tol = 1.0e-3
 	);
 
 	CNN(const CNN &) = delete;
@@ -66,7 +69,7 @@ public:
 
 	const std::vector<double> &state() const;
 
-	friend int dynamic_eq(double t, const double *__restrict__ x, double *__restrict__ dxdt, void *param);
+	friend int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
 };
 
 // Standard CNN nonlinearity function

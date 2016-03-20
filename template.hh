@@ -22,10 +22,20 @@
 
 typedef std::array<std::array<double, 3>, 3> CouplingMat;
 
+enum BoundaryCondition {
+	Constant, // or Dirichlet. Template::virtual_cell is only valid when this is set.
+	ZeroFlux, // or Neumann
+	Periodic, // or 'toroidal'
+	NumBoundaryConditions
+};
+
+
 struct Template {
 	CouplingMat A;
 	CouplingMat B;
 	double Z;
+	BoundaryCondition boundary_condition;
+	double virtual_cell;
 };
 
 Template load_template_file(const char *fname);

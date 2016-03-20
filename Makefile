@@ -2,12 +2,13 @@ CXX = xcrun -sdk macosx clang++
 LD = $(CXX)
 
 CXFLAGS = -c \
-          -std=c++11 \
+          -std=c++14 \
           -Wall \
           -O3 \
           -flto \
           -I /usr/local/Cellar/gsl/1.16/include/ \
-          -I /usr/local/include
+          -I /usr/local/include \
+          -UNDEBUG
 
 LDFLAGS = -O3 \
           -flto \
