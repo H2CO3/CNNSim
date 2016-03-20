@@ -16,6 +16,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <functional>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_odeiv2.h>
@@ -27,11 +28,12 @@
 static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
 
 struct CNN {
-private:
+public:
 	const std::ptrdiff_t width;
 	const std::ptrdiff_t height;
 	const std::ptrdiff_t dimension;
 
+private:
 	std::vector<double> x;
 	std::vector<double> FF; // feed-forward image, precomputed
 
@@ -66,6 +68,8 @@ public:
 	CNN &operator=(CNN &&) = delete;
 
 	bool step(double *t);
+	void run();
+	void run_with_handler(std::function<bool(double)> handler); // TODO: do something more lightweight
 
 	const std::vector<double> &state() const;
 

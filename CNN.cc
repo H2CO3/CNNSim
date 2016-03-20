@@ -224,3 +224,21 @@ bool CNN::step(double *t)
 
 	return status == GSL_SUCCESS && *t < t_max;
 }
+
+void CNN::run()
+{
+	double t = 0.0;
+	while (step(&t)) {
+		// no-op
+	}
+}
+
+void CNN::run_with_handler(std::function<bool(double)> handler)
+{
+	bool keep_running = true;
+	double t = 0.0;
+
+	while (keep_running && step(&t)) {
+		keep_running = handler(t);
+	}
+}

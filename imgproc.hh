@@ -23,9 +23,14 @@ struct GrayscaleImage {
 };
 
 
+// Reading
 GrayscaleImage load_png_file(const char *fname);
 GrayscaleImage load_png_handle(std::FILE *file);
 GrayscaleImage load_png_memory(const void *data, std::ptrdiff_t size);
+
+// Writing
+bool save_png_file(const char *fname, const GrayscaleImage &buf);
+bool save_png_handle(std::FILE *file, const GrayscaleImage &buf);
 
 // Compute a flat index from row major format
 static inline std::ptrdiff_t to_index(std::ptrdiff_t i, std::ptrdiff_t j, std::ptrdiff_t width)

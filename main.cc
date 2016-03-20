@@ -24,6 +24,7 @@ enum CNNOpt {
 	Input,
 	Templ,
 	Duration,
+	Output,
 	RelTol,
 	AbsTol,
 };
@@ -52,6 +53,10 @@ int main(int argc, char *argv[])
 	double rel_tol = 1e-3;
 	double abs_tol = 1e-3;
 
+	// output configuration
+	const char *out_file = nullptr;
+	GrayscaleImage out_image;
+
 	// Command-line options
 	const option::Descriptor desc[] = {
 		{ CNNOpt::Invalid,  0, "",  "",         option::Arg::None, "Usage: CNN <options>\n\nOptions:\n"    },
@@ -59,6 +64,7 @@ int main(int argc, char *argv[])
 		{ CNNOpt::Input,    0, "i", "input",    required_arg,      "   -i, --input    Input image"         },
 		{ CNNOpt::Templ,    0, "t", "template", required_arg,      "   -t, --template Template file"       },
 		{ CNNOpt::Duration, 0, "d", "duration", required_arg,      "   -d, --duration Simulation time"     },
+		{ CNNOpt::Output,   0, "o", "outfile",  required_arg,      "   -o, --outfile  Output image file"   },
 		{ CNNOpt::RelTol,   0, "r", "rel-tol",  required_arg,      "   -r, --rel-tol  Relative tolerance"  },
 		{ CNNOpt::AbsTol,   0, "a", "abs-tol",  required_arg,      "   -a, --abs-tol  Absolute tolerance"  },
 		{ 0,                0, nullptr, nullptr,     nullptr,      nullptr }
@@ -110,6 +116,10 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	if (auto opt = options[CNNOpt::Output]) {
+		out_file = opt.last()->arg;
+	}
+
 	if (auto opt = options[CNNOpt::RelTol]) {
 		rel_tol = std::strtod(opt.last()->arg, nullptr);
 	}
@@ -130,78 +140,85 @@ int main(int argc, char *argv[])
 		abs_tol
 	);
 
+	auto conv_state_to_output = [](GrayscaleImage *dst, const CNN &src) {
+		dst->width = src.width;
+		dst->height = src.height;
+		dst->buf.resize(src.dimension);
+		std::transform(src.state().begin(), src.state().end(), dst->buf.begin(), y);
+	};
+
+	auto stopwatch = [](auto fn) {
+		auto t0 = std::chrono::steady_clock::now();
+		fn();
+		auto t1 = std::chrono::steady_clock::now();
+
+		auto dt = std::chrono::duration<double>(t1 - t0).count();
+		std::printf("Simulation completed in %.3f seconds\n", dt);
+	};
+
+	// If an output file is specified, write final output into it and exit.
+	if (out_file) {
+		stopwatch([&]{ cnn.run(); });
+		conv_state_to_output(&out_image, cnn);
+		return save_png_file(out_file, out_image) ? 0 : 1;
+	}
+
+	// Otherwise, render CNN state step by step.
+	SDL_Init(SDL_INIT_VIDEO);
 
 	const int pixel_size = 3;
 
-	SDL_Init(SDL_INIT_VIDEO);
-
 	auto *window = SDL_CreateWindow(
-		"CNN State",
+		"CNN Output",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		x.width * pixel_size,
-		x.height * pixel_size,
+		cnn.width * pixel_size,
+		cnn.height * pixel_size,
 		SDL_WINDOW_SHOWN
 	);
 	auto *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-	std::printf("Press any key to start simulation...\n");
+	stopwatch([&]{
+		std::size_t step = 0;
 
-	bool start = false;
+		cnn.run_with_handler([&](double) {
+			// draw every 10th frame only because drawing appears to be slow
+			if (++step % 10) {
+				return true;
+			}
+
+			conv_state_to_output(&out_image, cnn);
+
+			SDL_RenderClear(renderer);
+
+			for (std::ptrdiff_t r = 0; r < out_image.height; r++) {
+				for (std::ptrdiff_t c = 0; c < out_image.width; c++) {
+					Uint8 g = (1 - out_image.buf[to_index(r, c, out_image.width)]) / 2 * 255;
+					SDL_SetRenderDrawColor(renderer, g, g, g, 255);
+					SDL_Rect R;
+					R.x = c * pixel_size;
+					R.y = r * pixel_size;
+					R.w = pixel_size;
+					R.h = pixel_size;
+					SDL_RenderFillRect(renderer, &R);
+				}
+			}
+
+			SDL_RenderPresent(renderer);
+
+			// Stay responsive
+			SDL_Event event;
+			while (SDL_PollEvent(&event)) {
+				if (event.type == SDL_QUIT) {
+					return false;
+				}
+			}
+
+			return true;
+		});
+	});
+
 	bool run = true;
-
-	while (not start) {
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_KEYUP) {
-				start = true;
-			}
-		}
-	}
-
-	// Start simulation, draw every 10th frame
-	double t = 0;
-	int step = 0;
-
-	auto t0 = std::chrono::steady_clock::now();
-
-	while (run && cnn.step(&t)) {
-		// Stay responsive
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT) {
-				run = false;
-			}
-		}
-
-		if (step++ % 10) {
-			continue;
-		}
-
-		std::transform(cnn.state().begin(), cnn.state().end(), x.buf.begin(), y);
-
-		SDL_RenderClear(renderer);
-
-		for (std::ptrdiff_t r = 0; r < x.height; r++) {
-			for (std::ptrdiff_t c = 0; c < x.width; c++) {
-				Uint8 g = (1 - x.buf[to_index(r, c, x.width)]) / 2 * 255;
-				SDL_SetRenderDrawColor(renderer, g, g, g, 255);
-				SDL_Rect R;
-				R.x = c * pixel_size;
-				R.y = r * pixel_size;
-				R.w = pixel_size;
-				R.h = pixel_size;
-				SDL_RenderFillRect(renderer, &R);
-			}
-		}
-
-		SDL_RenderPresent(renderer);
-	}
-
-	auto t1 = std::chrono::steady_clock::now();
-	auto dt = std::chrono::duration<double>(t1 - t0).count();
-	std::printf("Simulation completed in %.3f seconds\n", dt);
-
 	while (run) {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {

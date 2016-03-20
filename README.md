@@ -19,13 +19,16 @@ The meaning of the parameters is as follows:
 	For the precise format of template files, see the examples in `templates/`.
 
 * `-d`, `--duration`: **Required.** Duration (end time) of the simulation.
+* `-o`, `--outfile`: **Optional.** Name of the PNG file in which to write the final output.
+                     If omitted, the simulation will be animated on-screen.
 * `-r`, `--rel-tol`: **Optional.** Relative tolerance of the numerical solution of the state equation.
                      Defaults to `1.0e-3`.
 * `-a`, `--abs-tol`: **Optional.** Absolute tolerance of the numerical solution of the state equation.
                      Defaults to `1.0e-3`.
 
+Other, slightly more complex examples can be found in `examples/`.
+
 ### Building
 
 * On Unix-like systems, you can just type `make`.
 * On Windows: who knows? I don't use Windows.
-
