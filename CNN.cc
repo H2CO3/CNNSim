@@ -58,12 +58,12 @@ static int dynamic_eq(double t, const double *__restrict__ x, double *__restrict
 
 
 CNN::CNN(
-		std::ptrdiff_t w,
-		std::ptrdiff_t h,
-		std::vector<double> px,
-		std::vector<double> u,
-		Template ptem,
-		double pt_max
+	std::ptrdiff_t w,
+	std::ptrdiff_t h,
+	std::vector<double> px,
+	std::vector<double> u,
+	Template ptem,
+	double pt_max
 ):
 	width(w),
 	height(h),
