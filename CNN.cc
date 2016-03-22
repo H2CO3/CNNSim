@@ -98,7 +98,7 @@ static double compute_neighborhood(
 }
 
 // The actual CNN dynamic equation
-static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param)
+int CNN::dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param)
 {
 	auto *cnn = static_cast<CNN *>(param);
 

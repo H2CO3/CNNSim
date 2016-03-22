@@ -25,8 +25,6 @@
 #include "template.hh"
 
 
-static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
-
 struct CNN {
 public:
 	const std::ptrdiff_t width;
@@ -46,6 +44,8 @@ private:
 	gsl_odeiv2_step *stepper;
 	gsl_odeiv2_control *control;
 	gsl_odeiv2_evolve *evolver;
+
+	static int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
 
 public:
 	CNN(
@@ -72,8 +72,6 @@ public:
 	void run_with_handler(std::function<bool(double)> handler); // TODO: do something more lightweight
 
 	const std::vector<double> &state() const;
-
-	friend int dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, void *param);
 };
 
 // Standard CNN nonlinearity function
