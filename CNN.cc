@@ -169,6 +169,10 @@ CNN::CNN(
 	control(nullptr),
 	evolver(nullptr)
 {
+	// Rudimentary sanity checking
+	assert(x.size() == dimension && "you lied about the size of the initial state");
+	assert(u.size() == dimension && "you lied about the size of the input image");
+
 	// Precompute Feed-Forward Image
 	for (std::ptrdiff_t r = 0; r < height; r++) {
 		for (std::ptrdiff_t c = 0; c < width; c++) {
