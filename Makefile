@@ -30,6 +30,9 @@ CNN: $(OBJECTS)
 %.o: %.cc
 	$(CXX) $(CXFLAGS) -o $@ $<
 
+install: CNN
+	cp $< /usr/local/bin/
+
 clean:
 	rm -f $(OBJECTS) CNN
 

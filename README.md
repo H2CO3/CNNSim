@@ -35,6 +35,6 @@ Other, slightly more complex examples can be found in `examples/`.
 
 CNNSim requires the following libraries:
 
-* **The GNU Scientific Library, [libgsl](https://www.gnu.org/software/gsl/),** for numerically solving the dynamic equation
+* **The GNU Scientific Library,** [libgsl](https://www.gnu.org/software/gsl/), for numerically solving the dynamic equation
 * **Simple DirectMedia Layer v2,** [libsdl2](https://www.libsdl.org/download-2.0.php), for displaying the animated result of the simulation on-screen
 * **The PNG Reference implementation,** [libpng](http://www.libpng.org/pub/png/libpng.html), for reading and writing grayscale input and output images
