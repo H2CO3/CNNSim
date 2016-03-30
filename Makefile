@@ -3,7 +3,7 @@ OS = $(shell uname -s | tr '[[:upper:]]' '[[:lower:]]')
 ifeq ($(OS), darwin)
 	CXX = xcrun -sdk macosx clang++
 else
-	CXX = g++
+	CXX = g++-5
 endif
 
 LD = $(CXX)
@@ -37,7 +37,7 @@ OBJECTS = main.o CNN.o imgproc.o template.o
 all: CNN
 
 CNN: $(OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(LD) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cc
 	$(CXX) $(CXFLAGS) -o $@ $<

@@ -4,6 +4,11 @@
 
     ./CNN -s inputs/test_128.png -i inputs/test_128.png -t templates/hollow -d 500 -r 1e-2 -a 1e-1
 
+On certain 32-and-64-bit ("multilib") GNU/Linux distributions, it might be necessary to explicitly
+specify the runtime library path like this:
+
+    LD_LIBRARY_PATH=/usr/local/lib ./CNN -s inputs/test_128.png -i inputs/test_128.png -t templates/hollow -d 500 -r 1e-2 -a 1e-1
+
 The meaning of the parameters is as follows:
 
 * `-s`, `--state`: **Required.** Should point to the name of a PNG file that will be used as the initial
@@ -35,6 +40,6 @@ Other, slightly more complex examples can be found in `examples/`.
 
 CNNSim requires the following libraries:
 
-* **The GNU Scientific Library,** [libgsl](https://www.gnu.org/software/gsl/), for numerically solving the dynamic equation
+* **The GNU Scientific Library >= 2.1,** [libgsl](https://www.gnu.org/software/gsl/), for numerically solving the dynamic equation
 * **Simple DirectMedia Layer v2,** [libsdl2](https://www.libsdl.org/download-2.0.php), for displaying the animated result of the simulation on-screen
-* **The PNG Reference implementation,** [libpng](http://www.libpng.org/pub/png/libpng.html), for reading and writing grayscale input and output images
+* **The PNG Reference implementation >= 1.6,** [libpng 1.6](http://www.libpng.org/pub/png/libpng.html), for reading and writing grayscale input and output images
