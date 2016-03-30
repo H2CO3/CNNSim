@@ -70,7 +70,7 @@ Template load_template_stream(std::istream &stream)
 
 			break;
 		default:
-			assert(0 && "invalid boundary condition");
+			assert(0 && "invalid template item name");
 		}
 	}
 
