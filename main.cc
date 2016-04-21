@@ -8,6 +8,7 @@
 //
 
 #include <cstdio>
+#include <cstdlib>
 #include <chrono>
 
 #include <SDL2/SDL.h>
@@ -41,6 +42,25 @@ static option::ArgStatus required_arg(const option::Option& option, bool msg)
 	}
 
 	return option::ARG_ILLEGAL;
+}
+
+static GrayscaleImage parse_image_or_constant(const char *arg)
+{
+	if (arg[0] == '@') {
+		// format: "@640 480 -0.5"
+		GrayscaleImage img;
+		char *end;
+
+		img.width  = std::strtol(arg + 1, &end, 10);
+		img.height = std::strtol(end, &end, 10);
+
+		double val = std::strtod(end, nullptr);
+
+		img.buf = std::vector<double>(img.width * img.height, val);
+		return img;
+	} else {
+		return load_png_file(arg);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -89,14 +109,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (auto opt = options[CNNOpt::State]) {
-		x = load_png_file(opt.last()->arg);
+		x = parse_image_or_constant(opt.last()->arg);
 	} else {
 		std::fprintf(stderr, "Must specify initial state\n");
 		return 1;
 	}
 
 	if (auto opt = options[CNNOpt::Input]) {
-		u = load_png_file(opt.last()->arg);
+		u = parse_image_or_constant(opt.last()->arg);
 	} else {
 		std::fprintf(stderr, "Must specify input image\n");
 		return 1;
