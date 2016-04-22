@@ -84,9 +84,10 @@ static double compute_neighborhood(
 )
 {
 	double result = 0.0;
+	const std::ptrdiff_t template_halfsize = M.size() / 2;
 
-	for (std::ptrdiff_t off_r = -1; off_r <= +1; off_r++) {
-		for (std::ptrdiff_t off_c = -1; off_c <= +1; off_c++) {
+	for (std::ptrdiff_t off_r = -template_halfsize; off_r <= +template_halfsize; off_r++) {
+		for (std::ptrdiff_t off_c = -template_halfsize; off_c <= +template_halfsize; off_c++) {
 			auto r_p = r + off_r;
 			auto c_p = c + off_c;
 
@@ -102,10 +103,12 @@ int CNN::dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, v
 {
 	auto *cnn = static_cast<CNN *>(param);
 
-	auto width = cnn->width;
-	auto height = cnn->height;
-	auto tem = cnn->tem;
-	auto FF = cnn->FF;
+	const auto width = cnn->width;
+	const auto height = cnn->height;
+	const auto tem = cnn->tem;
+	const auto FF = cnn->FF;
+
+	const std::ptrdiff_t template_halfsize = tem.A.size() / 2;
 
 	for (std::ptrdiff_t r = 0; r < height; r++) {
 		for (std::ptrdiff_t c = 0; c < width; c++) {
@@ -113,7 +116,12 @@ int CNN::dynamic_eq(double t, const double *RESTRICT x, double *RESTRICT dxdt, v
 
 			double diff = FF[i] - x[i];
 
-			if (r <= 0 || c <= 0 || r >= height - 1 || c >= width - 1) {
+			if (
+				   r < template_halfsize
+				|| c < template_halfsize
+				|| r >= height - template_halfsize
+				|| c >= width - template_halfsize
+			) {
 				// Boundary Condition
 				// This is separated from the regular case because it contains quite a few
 				// conditionals - and I don't want those to be right in the middle of the
