@@ -55,6 +55,8 @@ main.o: main.cc
 install: CNN $(LIBNAME)
 	cp CNN /usr/local/bin/
 	cp $(LIBNAME) /usr/local/lib/
+	mkdir -p /usr/local/include/CNN/
+	cp *.hh /usr/local/include/CNN/
 
 clean:
 	rm -f *.o CNN $(LIBNAME)
