@@ -221,6 +221,14 @@ const std::vector<double> &CNN::state() const
 	return x;
 }
 
+void CNN::extract_output(GrayscaleImage *output)
+{
+	output->width = width;
+	output->height = height;
+	output->buf.resize(dimension);
+	std::transform(x.begin(), x.end(), output->buf.begin(), CNN::y);
+}
+
 bool CNN::step(double *t)
 {
 	int status = gsl_odeiv2_evolve_apply(

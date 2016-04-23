@@ -2,8 +2,14 @@ OS = $(shell uname -s | tr '[[:upper:]]' '[[:lower:]]')
 
 ifeq ($(OS), darwin)
 	CXX = xcrun -sdk macosx clang++
+	LIBNAME = libCNN.dylib
+	LIB_CXFLAGS =
+	LIB_LDFLAGS = -dynamiclib -install_name /usr/local/lib/$(LIBNAME)
 else
 	CXX = g++-5
+	LIBNAME = libCNN.so
+	LIB_CXFLAGS = -fPIC
+	LIB_LDFLAGS = -fPIC -shared -Wl,-soname,/usr/local/lib/$(LIBNAME)
 endif
 
 LD = $(CXX)
@@ -28,24 +34,29 @@ CXFLAGS = -c \
 
 LDFLAGS = -O3 \
           -flto \
-          -Wl,-w \
-          $(GSL_LIBS) $(PNG_LIBS) $(SDL_LIBS)
+          -Wl,-w
 
-OBJECTS = main.o CNN.o imgproc.o template.o
-
+LIB_OBJECTS = CNN.o imgproc.o template.o
 
 all: CNN
 
-CNN: $(OBJECTS)
-	$(LD) -o $@ $^ $(LDFLAGS)
+CNN: main.o $(LIBNAME)
+	$(LD) -o $@ main.o -L. -lCNN $(SDL_LIBS)
 
-%.o: %.cc
+$(LIBNAME): $(LIB_OBJECTS)
+	$(LD) -o $@ $^ $(LDFLAGS) $(LIB_LDFLAGS) $(GSL_LIBS) $(PNG_LIBS)
+
+main.o: main.cc
 	$(CXX) $(CXFLAGS) -o $@ $<
 
-install: CNN
-	cp $< /usr/local/bin/
+%.o: %.cc
+	$(CXX) $(CXFLAGS) $(LIB_CXFLAGS) -o $@ $<
+
+install: CNN $(LIBNAME)
+	cp CNN /usr/local/bin/
+	cp $(LIBNAME) /usr/local/lib/
 
 clean:
-	rm -f $(OBJECTS) CNN
+	rm -f *.o CNN $(LIBNAME)
 
-.PHONY: all clean
+.PHONY: all clean install

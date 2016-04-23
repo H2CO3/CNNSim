@@ -160,13 +160,6 @@ int main(int argc, char *argv[])
 		abs_tol
 	);
 
-	auto conv_state_to_output = [](GrayscaleImage *dst, const CNN &src) {
-		dst->width = src.width;
-		dst->height = src.height;
-		dst->buf.resize(src.dimension);
-		std::transform(src.state().begin(), src.state().end(), dst->buf.begin(), y);
-	};
-
 	auto stopwatch = [](auto fn) {
 		auto t0 = std::chrono::steady_clock::now();
 		fn();
@@ -179,7 +172,7 @@ int main(int argc, char *argv[])
 	// If an output file is specified, write final output into it and exit.
 	if (out_file) {
 		stopwatch([&]{ cnn.run(); });
-		conv_state_to_output(&out_image, cnn);
+		cnn.extract_output(&out_image);
 		return save_png_file(out_file, out_image) ? 0 : 1;
 	}
 
@@ -207,7 +200,7 @@ int main(int argc, char *argv[])
 				return true;
 			}
 
-			conv_state_to_output(&out_image, cnn);
+			cnn.extract_output(&out_image);
 
 			SDL_RenderClear(renderer);
 

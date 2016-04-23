@@ -23,6 +23,7 @@
 
 #include "util.hh"
 #include "template.hh"
+#include "imgproc.hh"
 
 
 struct CNN {
@@ -72,12 +73,12 @@ public:
 	void run_with_handler(std::function<bool(double)> handler); // TODO: do something more lightweight
 
 	const std::vector<double> &state() const;
-};
+	void extract_output(GrayscaleImage *output);
 
-// Standard CNN nonlinearity function
-static inline double y(double x)
-{
-	return std::max(-1.0, std::min(+1.0, x));
-}
+	// Standard CNN nonlinearity function
+	static inline double y(double x) {
+		return std::max(-1.0, std::min(+1.0, x));
+	}
+};
 
 #endif // CNNSIM_CNN_HH
